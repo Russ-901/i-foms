@@ -48,7 +48,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     });
   } catch (error) {
     console.error('GET /staff/[id] error:', error);
-    return NextResponse.json({ message: 'Error fetching staff' }, { status: 500 });
+    const detail = process.env.NODE_ENV !== 'production' && error instanceof Error ? error.message : undefined;
+    return NextResponse.json({ message: 'Error fetching staff', ...(detail && { detail }) }, { status: 500 });
   }
 }
 

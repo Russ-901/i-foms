@@ -47,8 +47,12 @@ export default function SignInPage() {
       redirect: false,
     });
 
-    if (res?.error) setError(res.error);
-    else window.location.href = '/dashboard';
+    if (res?.error) {
+      setError(res.error);
+    } else {
+      router.push('/dashboard');
+      router.refresh(); // picks up the new session cookie in server components
+    }
   };
 
   return (

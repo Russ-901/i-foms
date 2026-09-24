@@ -29,25 +29,28 @@ export default function StaffDetailsPage({ params }: { params: Promise<{ id: str
   // succeeded.
   const [lastEmailResult, setLastEmailResult] = useState<boolean | null>(null);
 
-  useEffect(() => {
-    loadStaff();
-  }, [id]);
-
   async function loadStaff() {
     setLoading(true);
     try {
       const res = await fetch(`/api/staff/${id}`);
       if (res.status === 404) return setNotFound(true);
       if (res.status === 403) return setForbidden(true);
-      if (!res.ok) throw new Error('Failed to load staff');
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || err.message || `Failed to load staff (${res.status})`);
+      }
       setData(await res.json());
     } catch (err) {
       console.error(err);
-      toast.error('Failed to load staff details.');
+      toast.error(err instanceof Error ? err.message : 'Failed to load staff details.');
     } finally {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    loadStaff();
+  }, [id]);
 
   async function sendInvite() {
     setInvitePending(true);

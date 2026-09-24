@@ -24,8 +24,11 @@ function AcceptInviteForm() {
   const token = useSearchParams().get('token') ?? '';
 
   const [invite, setInvite] = useState<InviteInfo | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [invalid, setInvalid] = useState(false);
+  // A missing token is known synchronously from the URL, so these start in
+  // their final state for that case instead of being set from inside the
+  // effect below (which only needs to run the actual async check).
+  const [loading, setLoading] = useState(!!token);
+  const [invalid, setInvalid] = useState(!token);
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -33,11 +36,7 @@ function AcceptInviteForm() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!token) {
-      setInvalid(true);
-      setLoading(false);
-      return;
-    }
+    if (!token) return;
 
     fetch(`/api/auth/invite/${token}`)
       .then(async (res) => {

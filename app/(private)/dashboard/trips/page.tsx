@@ -4,14 +4,15 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useHue } from '@/context/HueContext';
 import gsap from 'gsap';
-import { ArrowUp, ArrowDown, ArrowUpDown, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger
 } from '@/components/ui/dialog';
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow
+  Table, TableBody, TableCell, TableHeader, TableRow
 } from '@/components/ui/table';
+import { SortableTableHead } from '@/components/ui/sortable-table-head';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
@@ -67,24 +68,6 @@ export default function TripsPage() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [page, setPage] = useState(1);
 
-  useEffect(() => {
-    if (titleRef.current)
-      gsap.fromTo(titleRef.current, { y: -20, opacity: 0 }, { y: 0, opacity: 1, duration: 1 });
-
-    Promise.all([fetchTrips(), fetchVehicles(), fetchStaff()]).finally(() =>
-      setLoading(false)
-    );
-    generateTripNumber();
-  }, []);
-
-  useEffect(() => {
-    if (debouncedOrigin) fetchLocationSuggestions(debouncedOrigin, setOriginSuggestions);
-  }, [debouncedOrigin]);
-
-  useEffect(() => {
-    if (debouncedDestination) fetchLocationSuggestions(debouncedDestination, setDestinationSuggestions);
-  }, [debouncedDestination]);
-
   async function fetchTrips() {
     const res = await fetch('/api/trips');
     const data: Trip[] = await res.json();
@@ -118,6 +101,24 @@ export default function TripsPage() {
     for (let i = 0; i < 4; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
     setForm(f => ({ ...f, tripNumber: `TR00${code}` }));
   }
+
+  useEffect(() => {
+    if (titleRef.current)
+      gsap.fromTo(titleRef.current, { y: -20, opacity: 0 }, { y: 0, opacity: 1, duration: 1 });
+
+    Promise.all([fetchTrips(), fetchVehicles(), fetchStaff()]).finally(() =>
+      setLoading(false)
+    );
+    generateTripNumber();
+  }, []);
+
+  useEffect(() => {
+    if (debouncedOrigin) fetchLocationSuggestions(debouncedOrigin, setOriginSuggestions);
+  }, [debouncedOrigin]);
+
+  useEffect(() => {
+    if (debouncedDestination) fetchLocationSuggestions(debouncedDestination, setDestinationSuggestions);
+  }, [debouncedDestination]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -199,26 +200,6 @@ export default function TripsPage() {
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const paged = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
-  function SortHeader({ label, sortableKey }: { label: string; sortableKey: SortKey }) {
-    const active = sortKey === sortableKey;
-    return (
-      <TableHead className="text-gray-300">
-        <button
-          type="button"
-          onClick={() => toggleSort(sortableKey)}
-          className="flex items-center gap-1 hover:text-white transition-colors cursor-pointer"
-        >
-          {label}
-          {active ? (
-            sortDir === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />
-          ) : (
-            <ArrowUpDown size={14} className="opacity-40" />
-          )}
-        </button>
-      </TableHead>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -472,12 +453,12 @@ export default function TripsPage() {
         <Table>
           <TableHeader>
             <TableRow className="bg-gray-800">
-              <SortHeader label="Trip #" sortableKey="tripNumber" />
-              <SortHeader label="Route" sortableKey="route" />
-              <SortHeader label="Vehicle" sortableKey="vehicle" />
-              <SortHeader label="Driver" sortableKey="driverName" />
-              <SortHeader label="Date" sortableKey="startDate" />
-              <SortHeader label="Status" sortableKey="status" />
+              <SortableTableHead label="Trip #" sortKey="tripNumber" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+              <SortableTableHead label="Route" sortKey="route" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+              <SortableTableHead label="Vehicle" sortKey="vehicle" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+              <SortableTableHead label="Driver" sortKey="driverName" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+              <SortableTableHead label="Date" sortKey="startDate" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+              <SortableTableHead label="Status" sortKey="status" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
             </TableRow>
           </TableHeader>
 

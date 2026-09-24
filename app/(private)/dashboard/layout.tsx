@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import AuthGuard from '../../../components/Guard';
 import Sidebar from '../../../components/layout/Sidebar';
@@ -12,10 +12,15 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Close the mobile drawer whenever we navigate somewhere new.
-  useEffect(() => {
+  // Close the mobile drawer whenever we navigate somewhere new. Adjusted
+  // during render (React's recommended pattern for "reset state when a
+  // dependency changes") rather than in an effect, so it takes effect in
+  // the same render instead of causing an extra one.
+  const [prevPathname, setPrevPathname] = useState(pathname);
+  if (pathname !== prevPathname) {
+    setPrevPathname(pathname);
     setSidebarOpen(false);
-  }, [pathname]);
+  }
 
   return (
     <div

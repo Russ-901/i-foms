@@ -15,7 +15,8 @@ import {
 import {
   Select, SelectTrigger, SelectContent, SelectItem, SelectValue
 } from '@/components/ui/select';
-import { ArrowUp, ArrowDown, ArrowUpDown, Search, Copy, Check } from 'lucide-react';
+import { Search, Copy, Check } from 'lucide-react';
+import { SortableTableHead } from '@/components/ui/sortable-table-head';
 import { Staff } from '@/types/models';
 import { toast } from 'sonner';
 import InviteEmailStatus from '@/components/staff/InviteEmailStatus';
@@ -58,16 +59,16 @@ export default function StaffPage() {
         Mechanics: ['Mechanic', 'Senior Mechanic'],
     };
 
+    async function fetchStaffs() {
+        const res = await fetch('/api/staff');
+        setStaffs(await res.json());
+    }
+
     useEffect(() => {
         if (titleRef.current)
         gsap.fromTo(titleRef.current, { y: -20, opacity: 0 }, { y: 0, opacity: 1, duration: 1 });
         fetchStaffs();
     }, []);
-
-    async function fetchStaffs() {
-        const res = await fetch('/api/staff');
-        setStaffs(await res.json());
-    }
 
     const filteredPositions = form.department ? positionsByDept[form.department] : [];
 
@@ -154,26 +155,6 @@ export default function StaffPage() {
 
     const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
     const paged = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
-    function SortHeader({ label, sortableKey }: { label: string; sortableKey: SortKey }) {
-        const active = sortKey === sortableKey;
-        return (
-            <TableHead className="text-gray-300">
-                <button
-                    type="button"
-                    onClick={() => toggleSort(sortableKey)}
-                    className="flex items-center gap-1 hover:text-white transition-colors cursor-pointer"
-                >
-                    {label}
-                    {active ? (
-                        sortDir === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />
-                    ) : (
-                        <ArrowUpDown size={14} className="opacity-40" />
-                    )}
-                </button>
-            </TableHead>
-        );
-    }
 
     return (
         <div className="space-y-6">
@@ -301,11 +282,11 @@ export default function StaffPage() {
             <Table>
             <TableHeader>
                 <TableRow className="bg-gray-800">
-                    <SortHeader label="Name" sortableKey="name" />
-                    <SortHeader label="Email" sortableKey="email" />
+                    <SortableTableHead label="Name" sortKey="name" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+                    <SortableTableHead label="Email" sortKey="email" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
                     <TableHead className="text-gray-300">Phone</TableHead>
-                    <SortHeader label="Department" sortableKey="department" />
-                    <SortHeader label="Position" sortableKey="position" />
+                    <SortableTableHead label="Department" sortKey="department" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+                    <SortableTableHead label="Position" sortKey="position" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
                 </TableRow>
             </TableHeader>
             <TableBody>

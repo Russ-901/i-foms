@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useHue } from '@/context/HueContext';
 import gsap from 'gsap';
 import { useRouter } from 'next/navigation';
-import { ArrowUp, ArrowDown, ArrowUpDown, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger
@@ -15,6 +15,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { SortableTableHead } from '@/components/ui/sortable-table-head';
 import { Vehicle } from '@/types/models';
 import StatusBadge from '@/components/vehicles/StatusBadge';
 import { toast } from 'sonner';
@@ -22,17 +23,73 @@ import { toast } from 'sonner';
 type SortKey = 'plateNumber' | 'manufacturer' | 'modelName' | 'year' | 'mileage' | 'status';
 const PAGE_SIZE = 8;
 
+const MANUFACTURERS = [
+  'Toyota', 'Nissan', 'Ford', 'Tesla', 'BMW', 'Mercedes', 'Mazda', 'Volkswagen'
+];
+const FUEL_OPTIONS = ['Petrol', 'Diesel', 'Hybrid', 'Electric'];
+
+const MODEL_SUGGESTIONS: Record<string, string[]> = {
+  Toyota: ['Corolla', 'Hilux', 'Camry', 'RAV4'],
+  Nissan: ['Navara', 'Patrol', 'Note', 'X-Trail'],
+  Ford: ['Ranger', 'Focus', 'Fiesta', 'Everest'],
+  Tesla: ['Model S', 'Model 3', 'Model X', 'Model Y'],
+  BMW: ['X1', 'X3', 'X5', '3 Series', '5 Series'],
+  Mercedes: ['C-Class', 'E-Class', 'GLA', 'GLE'],
+  Mazda: ['CX-5', 'Mazda3', 'Mazda6'],
+  Volkswagen: ['Golf', 'Polo', 'Tiguan', 'Passat'],
+};
+
+// Model-specific average mileage
+const MODEL_MILEAGE: Record<string, number> = {
+  Corolla: 90000,
+  Hilux: 150000,
+  Camry: 110000,
+  RAV4: 95000,
+  Navara: 140000,
+  Patrol: 130000,
+  Note: 80000,
+  'X-Trail': 100000,
+  Ranger: 145000,
+  Focus: 95000,
+  Fiesta: 85000,
+  Everest: 130000,
+  'Model S': 40000,
+  'Model 3': 35000,
+  'Model X': 45000,
+  'Model Y': 38000,
+  X1: 85000,
+  X3: 90000,
+  X5: 100000,
+  '3 Series': 95000,
+  '5 Series': 105000,
+  'C-Class': 95000,
+  'E-Class': 105000,
+  GLA: 90000,
+  GLE: 100000,
+  'CX-5': 90000,
+  Mazda3: 85000,
+  Mazda6: 95000,
+  Golf: 88000,
+  Polo: 78000,
+  Tiguan: 93000,
+  Passat: 97000,
+};
+
+function suggestFor(manufacturer: string, modelName: string, fuelType: string) {
+  const baseMileage = fuelType === 'Electric' ? 30000 : 120000;
+  return {
+    models: MODEL_SUGGESTIONS[manufacturer] || [],
+    years: Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - i),
+    mileage: MODEL_MILEAGE[modelName] || baseMileage,
+  };
+}
+
 export default function VehiclesPage() {
   const hue = useHue();
   const titleRef = useRef<HTMLHeadingElement>(null);
   const router = useRouter();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [open, setOpen] = useState(false);
-  const [suggestions, setSuggestions] = useState({
-    models: [] as string[],
-    years: [] as number[],
-    mileage: 0
-  });
 
   const [form, setForm] = useState({
     manufacturer: '',
@@ -48,10 +105,12 @@ export default function VehiclesPage() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [page, setPage] = useState(1);
 
-  const manufacturers = [
-    'Toyota', 'Nissan', 'Ford', 'Tesla', 'BMW', 'Mercedes', 'Mazda', 'Volkswagen'
-  ];
-  const fuelOptions = ['Petrol', 'Diesel', 'Hybrid', 'Electric'];
+  // Derived from the form as it's filled in — no effect needed, this is
+  // cheap to recompute on every render.
+  const suggestions = useMemo(
+    () => suggestFor(form.manufacturer, form.modelName, form.fuelType),
+    [form.manufacturer, form.modelName, form.fuelType]
+  );
 
   useEffect(() => {
     if (titleRef.current)
@@ -63,68 +122,6 @@ export default function VehiclesPage() {
     const res = await fetch('/api/vehicles');
     setVehicles(await res.json());
   }
-
-  // 💡 Intelligent suggestion engine
-  useEffect(() => {
-    if (form.manufacturer) {
-      const modelSuggestions: Record<string, string[]> = {
-        Toyota: ['Corolla', 'Hilux', 'Camry', 'RAV4'],
-        Nissan: ['Navara', 'Patrol', 'Note', 'X-Trail'],
-        Ford: ['Ranger', 'Focus', 'Fiesta', 'Everest'],
-        Tesla: ['Model S', 'Model 3', 'Model X', 'Model Y'],
-        BMW: ['X1', 'X3', 'X5', '3 Series', '5 Series'],
-        Mercedes: ['C-Class', 'E-Class', 'GLA', 'GLE'],
-        Mazda: ['CX-5', 'Mazda3', 'Mazda6'],
-        Volkswagen: ['Golf', 'Polo', 'Tiguan', 'Passat'],
-      };
-
-      // Base mileage by fuel type
-      const baseMileage = form.fuelType === 'Electric' ? 30000 : 120000;
-
-      // Model-specific average mileage
-      const modelMileageMap: Record<string, number> = {
-        Corolla: 90000,
-        Hilux: 150000,
-        Camry: 110000,
-        RAV4: 95000,
-        Navara: 140000,
-        Patrol: 130000,
-        Note: 80000,
-        'X-Trail': 100000,
-        Ranger: 145000,
-        Focus: 95000,
-        Fiesta: 85000,
-        Everest: 130000,
-        'Model S': 40000,
-        'Model 3': 35000,
-        'Model X': 45000,
-        'Model Y': 38000,
-        X1: 85000,
-        X3: 90000,
-        X5: 100000,
-        '3 Series': 95000,
-        '5 Series': 105000,
-        'C-Class': 95000,
-        'E-Class': 105000,
-        GLA: 90000,
-        GLE: 100000,
-        'CX-5': 90000,
-        Mazda3: 85000,
-        Mazda6: 95000,
-        Golf: 88000,
-        Polo: 78000,
-        Tiguan: 93000,
-        Passat: 97000,
-      };
-
-      setSuggestions((prev) => ({
-        ...prev,
-        models: modelSuggestions[form.manufacturer] || [],
-        years: Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - i),
-        mileage: modelMileageMap[form.modelName] || baseMileage,
-      }));
-    }
-  }, [form.manufacturer, form.modelName, form.fuelType]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -190,26 +187,6 @@ export default function VehiclesPage() {
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const paged = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  function SortHeader({ label, sortableKey }: { label: string; sortableKey: SortKey }) {
-    const active = sortKey === sortableKey;
-    return (
-      <TableHead className="text-gray-300">
-        <button
-          type="button"
-          onClick={() => toggleSort(sortableKey)}
-          className="flex items-center gap-1 hover:text-white transition-colors cursor-pointer"
-        >
-          {label}
-          {active ? (
-            sortDir === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />
-          ) : (
-            <ArrowUpDown size={14} className="opacity-40" />
-          )}
-        </button>
-      </TableHead>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -257,7 +234,7 @@ export default function VehiclesPage() {
                     <SelectValue placeholder="Select manufacturer" />
                   </SelectTrigger>
                   <SelectContent>
-                    {manufacturers.map((m) => (
+                    {MANUFACTURERS.map((m) => (
                       <SelectItem key={m} value={m}>{m}</SelectItem>
                     ))}
                   </SelectContent>
@@ -312,7 +289,7 @@ export default function VehiclesPage() {
                     <SelectValue placeholder="Select fuel type" />
                   </SelectTrigger>
                   <SelectContent>
-                    {fuelOptions.map((f) => (
+                    {FUEL_OPTIONS.map((f) => (
                       <SelectItem key={f} value={f}>{f}</SelectItem>
                     ))}
                   </SelectContent>
@@ -367,13 +344,13 @@ export default function VehiclesPage() {
         <Table>
           <TableHeader>
             <TableRow className="bg-gray-800">
-              <SortHeader label="Manufacturer" sortableKey="manufacturer" />
-              <SortHeader label="Model" sortableKey="modelName" />
-              <SortHeader label="Plate" sortableKey="plateNumber" />
-              <SortHeader label="Year" sortableKey="year" />
+              <SortableTableHead label="Manufacturer" sortKey="manufacturer" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+              <SortableTableHead label="Model" sortKey="modelName" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+              <SortableTableHead label="Plate" sortKey="plateNumber" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+              <SortableTableHead label="Year" sortKey="year" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
               <TableHead className="text-gray-300">Fuel</TableHead>
-              <SortHeader label="Mileage" sortableKey="mileage" />
-              <SortHeader label="Status" sortableKey="status" />
+              <SortableTableHead label="Mileage" sortKey="mileage" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+              <SortableTableHead label="Status" sortKey="status" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
             </TableRow>
           </TableHeader>
           <TableBody>

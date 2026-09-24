@@ -11,6 +11,86 @@ import { Card, CardContent } from '@/components/ui/card';
 import TripStatusBadge from '@/components/trips/TripStatusBadge';
 import { Trip } from '@/types/models';
 
+// Declared at module scope (not nested inside the page component) because a
+// component defined during render loses its state on every re-render.
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="space-y-3">
+      <h2 className="text-xs uppercase tracking-wide text-gray-500">{title}</h2>
+      {children}
+    </section>
+  );
+}
+
+function TripCard({
+  trip,
+  action,
+  hue,
+  busy,
+  onUpdateStatus,
+}: {
+  trip: Trip;
+  action?: 'start' | 'complete';
+  hue: number;
+  busy: boolean;
+  onUpdateStatus: (tripId: string, status: 'Ongoing' | 'Completed') => void;
+}) {
+  return (
+    <Card className="bg-gray-900/70 border-gray-800">
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-start justify-between gap-2">
+          <span className="font-semibold text-base">{trip.tripNumber}</span>
+          <TripStatusBadge status={trip.status} />
+        </div>
+
+        <div className="space-y-1.5 text-sm">
+          <p className="flex items-start gap-2 text-gray-300">
+            <MapPin size={15} className="mt-0.5 shrink-0 text-gray-500" />
+            <span>{trip.origin} → {trip.destination}</span>
+          </p>
+          <p className="flex items-center gap-2 text-gray-400">
+            <Calendar size={15} className="shrink-0 text-gray-500" />
+            {new Date(trip.startDate).toLocaleDateString()}
+          </p>
+          <p className="flex items-center gap-2 text-gray-400">
+            <Car size={15} className="shrink-0 text-gray-500" />
+            <span className="uppercase">{trip.vehicleId?.plateNumber ?? 'No vehicle'}</span>
+            {trip.vehicleId?.modelName && (
+              <span className="text-gray-500 normal-case">— {trip.vehicleId.modelName}</span>
+            )}
+          </p>
+        </div>
+
+        {trip.purpose && (
+          <p className="text-sm text-gray-500 border-t border-gray-800 pt-2">{trip.purpose}</p>
+        )}
+
+        {action === 'start' && (
+          <Button
+            disabled={busy}
+            onClick={() => onUpdateStatus(trip._id, 'Ongoing')}
+            className="w-full h-12 text-base hover:opacity-90"
+            style={{ backgroundColor: `hsl(${hue},70%,45%)`, color: 'white' }}
+          >
+            {busy ? 'Starting...' : 'Start Trip'}
+          </Button>
+        )}
+
+        {action === 'complete' && (
+          <Button
+            disabled={busy}
+            onClick={() => onUpdateStatus(trip._id, 'Completed')}
+            className="w-full h-12 text-base hover:opacity-90"
+            style={{ backgroundColor: `hsl(${hue},70%,45%)`, color: 'white' }}
+          >
+            {busy ? 'Completing...' : 'Complete Trip'}
+          </Button>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function FieldViewPage() {
   const hue = useHue();
   const { data: session } = useSession();
@@ -21,10 +101,6 @@ export default function FieldViewPage() {
 
   const staffId = session?.user?.staffId ? String(session.user.staffId) : null;
   const myName = session?.user?.name ?? null;
-
-  useEffect(() => {
-    fetchTrips();
-  }, []);
 
   async function fetchTrips() {
     setLoading(true);
@@ -39,6 +115,10 @@ export default function FieldViewPage() {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    fetchTrips();
+  }, []);
 
   // Trips assigned to the signed-in driver. driverId is the reliable match;
   // driverName covers trips created before a driver was linked by id.
@@ -79,73 +159,6 @@ export default function FieldViewPage() {
     } finally {
       setUpdatingId(null);
     }
-  }
-
-  function TripCard({ trip, action }: { trip: Trip; action?: 'start' | 'complete' }) {
-    const busy = updatingId === trip._id;
-    return (
-      <Card className="bg-gray-900/70 border-gray-800">
-        <CardContent className="p-4 space-y-3">
-          <div className="flex items-start justify-between gap-2">
-            <span className="font-semibold text-base">{trip.tripNumber}</span>
-            <TripStatusBadge status={trip.status} />
-          </div>
-
-          <div className="space-y-1.5 text-sm">
-            <p className="flex items-start gap-2 text-gray-300">
-              <MapPin size={15} className="mt-0.5 shrink-0 text-gray-500" />
-              <span>{trip.origin} → {trip.destination}</span>
-            </p>
-            <p className="flex items-center gap-2 text-gray-400">
-              <Calendar size={15} className="shrink-0 text-gray-500" />
-              {new Date(trip.startDate).toLocaleDateString()}
-            </p>
-            <p className="flex items-center gap-2 text-gray-400">
-              <Car size={15} className="shrink-0 text-gray-500" />
-              <span className="uppercase">{trip.vehicleId?.plateNumber ?? 'No vehicle'}</span>
-              {trip.vehicleId?.modelName && (
-                <span className="text-gray-500 normal-case">— {trip.vehicleId.modelName}</span>
-              )}
-            </p>
-          </div>
-
-          {trip.purpose && (
-            <p className="text-sm text-gray-500 border-t border-gray-800 pt-2">{trip.purpose}</p>
-          )}
-
-          {action === 'start' && (
-            <Button
-              disabled={busy}
-              onClick={() => updateStatus(trip._id, 'Ongoing')}
-              className="w-full h-12 text-base hover:opacity-90"
-              style={{ backgroundColor: `hsl(${hue},70%,45%)`, color: 'white' }}
-            >
-              {busy ? 'Starting...' : 'Start Trip'}
-            </Button>
-          )}
-
-          {action === 'complete' && (
-            <Button
-              disabled={busy}
-              onClick={() => updateStatus(trip._id, 'Completed')}
-              className="w-full h-12 text-base hover:opacity-90"
-              style={{ backgroundColor: `hsl(${hue},70%,45%)`, color: 'white' }}
-            >
-              {busy ? 'Completing...' : 'Complete Trip'}
-            </Button>
-          )}
-        </CardContent>
-      </Card>
-    );
-  }
-
-  function Section({ title, children }: { title: string; children: React.ReactNode }) {
-    return (
-      <section className="space-y-3">
-        <h2 className="text-xs uppercase tracking-wide text-gray-500">{title}</h2>
-        {children}
-      </section>
-    );
   }
 
   return (
@@ -194,7 +207,16 @@ export default function FieldViewPage() {
       {current.length > 0 && (
         <Section title="On the road now">
           <div className="space-y-3">
-            {current.map((t) => <TripCard key={t._id} trip={t} action="complete" />)}
+            {current.map((t) => (
+              <TripCard
+                key={t._id}
+                trip={t}
+                action="complete"
+                hue={hue}
+                busy={updatingId === t._id}
+                onUpdateStatus={updateStatus}
+              />
+            ))}
           </div>
         </Section>
       )}
@@ -202,7 +224,16 @@ export default function FieldViewPage() {
       {upNext.length > 0 && (
         <Section title="Ready to go">
           <div className="space-y-3">
-            {upNext.map((t) => <TripCard key={t._id} trip={t} action="start" />)}
+            {upNext.map((t) => (
+              <TripCard
+                key={t._id}
+                trip={t}
+                action="start"
+                hue={hue}
+                busy={updatingId === t._id}
+                onUpdateStatus={updateStatus}
+              />
+            ))}
           </div>
         </Section>
       )}
@@ -210,7 +241,9 @@ export default function FieldViewPage() {
       {awaiting.length > 0 && (
         <Section title="Awaiting approval">
           <div className="space-y-3">
-            {awaiting.map((t) => <TripCard key={t._id} trip={t} />)}
+            {awaiting.map((t) => (
+              <TripCard key={t._id} trip={t} hue={hue} busy={false} onUpdateStatus={updateStatus} />
+            ))}
           </div>
         </Section>
       )}
@@ -218,7 +251,9 @@ export default function FieldViewPage() {
       {past.length > 0 && (
         <Section title="History">
           <div className="space-y-3">
-            {past.slice(0, 5).map((t) => <TripCard key={t._id} trip={t} />)}
+            {past.slice(0, 5).map((t) => (
+              <TripCard key={t._id} trip={t} hue={hue} busy={false} onUpdateStatus={updateStatus} />
+            ))}
           </div>
         </Section>
       )}

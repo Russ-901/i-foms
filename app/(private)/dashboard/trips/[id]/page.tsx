@@ -33,10 +33,6 @@ export default function TripDetailsPage({ params }: { params: Promise<{ id: stri
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
 
-  useEffect(() => {
-    loadAll();
-  }, [id]);
-
   async function loadAll() {
     setLoading(true);
     try {
@@ -64,6 +60,10 @@ export default function TripDetailsPage({ params }: { params: Promise<{ id: stri
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    loadAll();
+  }, [id]);
 
   async function updateStatus(status: string, cancellationReason?: string) {
     setUpdating(true);
