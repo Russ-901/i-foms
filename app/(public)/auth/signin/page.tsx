@@ -113,6 +113,10 @@ export default function SignInPage() {
             >
               Sign In
             </Button>
+          <p className="text-gray-300 my-4">Don't have an account?.</p>
+            <Button onClick={() => router.push('/auth/signup')} className="w-full text-white rounded-sm mt-4 cursor-pointer" style={{ background: `linear-gradient(90deg, hsl(${hue}, 70%, 45%), hsl(${(hue + 30) % 360}, 100%, 18%))` }}>
+              Create Account
+            </Button>
           </form>
         </CardContent>
 
